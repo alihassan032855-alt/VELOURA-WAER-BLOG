@@ -39,6 +39,8 @@ export default function StudioDashboard({
   const [affBrand, setAffBrand] = useState("");
   const [affPrice, setAffPrice] = useState("");
   const [affImage, setAffImage] = useState("");
+  const [uploadedArticleImage, setUploadedArticleImage] = useState("");
+  const [uploadImageName, setUploadImageName] = useState("");
 
   const [savingStatus, setSavingStatus] = useState("");
 
@@ -446,30 +448,106 @@ export default function StudioDashboard({
             </div>
 
             {/* Image selection Cover */}
-            <div className="col-span-1 md:col-span-2">
-              <label className="block text-xs font-mono uppercase tracking-widest text-stone-500 mb-1">Featured Cover Image URL</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={formFeaturedImage}
-                  onChange={(e) => setFormFeaturedImage(e.target.value)}
-                  className="flex-1 bg-stone-50 border border-stone-320 rounded p-1.5 text-xs text-stone-900 font-mono focus:outline-none"
-                  placeholder="https://images.unsplash.com/... for cover image"
-                />
+            <div className="col-span-1 md:col-span-2 space-y-3">
+              <div>
+                <label className="block text-xs font-mono uppercase tracking-widest text-[#1A1A1A]/80 font-bold mb-1">Featured Cover Image URL</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={formFeaturedImage}
+                    onChange={(e) => setFormFeaturedImage(e.target.value)}
+                    className="flex-1 bg-stone-50 border border-[#D4AF37]/20 rounded-none p-1.5 text-xs text-stone-900 font-mono focus:outline-none focus:border-[#D4AF37]"
+                    placeholder="https://images.unsplash.com/... for cover image"
+                  />
+                </div>
+
+                {/* Preselected Cover options */}
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <span className="text-[10px] font-mono text-stone-400 mt-1 uppercase">Instant High-Res Presets:</span>
+                  {curatedCoverPresets.map(preset => (
+                    <button
+                      type="button"
+                      key={preset.name}
+                      onClick={() => setFormFeaturedImage(preset.url)}
+                      className="text-[9px] bg-stone-100 hover:bg-stone-250 border border-[#D4AF37]/20 rounded-none px-2 py-0.5 text-stone-700 font-mono cursor-pointer"
+                    >
+                      {preset.name}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* Preselected Cover options */}
-              <div className="flex flex-wrap gap-2 mt-2">
-                <span className="text-[10px] font-mono text-stone-400 mt-1 uppercase">Instant High-Res Presets:</span>
-                {curatedCoverPresets.map(preset => (
-                  <button
-                    key={preset.name}
-                    onClick={() => setFormFeaturedImage(preset.url)}
-                    className="text-[9px] bg-stone-100 hover:bg-stone-250 border border-stone-200 rounded px-2 py-0.5 text-stone-700 font-mono cursor-pointer"
-                  >
-                    {preset.name}
-                  </button>
-                ))}
+              {/* Upload From Device Section for Cover Image */}
+              <div className="border border-dashed border-[#D4AF37]/30 bg-[#FAF9F6] p-4 rounded-none text-center">
+                <span className="block text-xs font-serif uppercase tracking-widest text-[#1A1A1A]/80 font-bold mb-2">Or Upload Cover Image From Device</span>
+                
+                {/* Drag and Drop Container */}
+                <div 
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const files = e.dataTransfer.files;
+                    if (files && files.length > 0) {
+                      const file = files[0];
+                      if (['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          if (typeof reader.result === 'string') {
+                            setFormFeaturedImage(reader.result);
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }
+                  }}
+                  className="cursor-pointer border border-[#D4AF37]/15 hover:border-[#D4AF37] p-4 bg-white transition flex flex-col items-center justify-center gap-1.5"
+                  onClick={() => document.getElementById('cover-image-uploader')?.click()}
+                >
+                  <Upload className="h-5 w-5 text-[#D4AF37]" />
+                  <span className="text-[10px] text-stone-500 uppercase tracking-wider font-mono">Drag & Drop Image Here or Click to Browse</span>
+                  <span className="text-[9px] text-stone-400">Accepts JPG, JPEG, PNG, WEBP</span>
+                  <input 
+                    id="cover-image-uploader"
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (files && files.length > 0) {
+                        const file = files[0];
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          if (typeof reader.result === 'string') {
+                            setFormFeaturedImage(reader.result);
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                </div>
+
+                {/* Cover Image Preview */}
+                {formFeaturedImage && (
+                  <div className="mt-3 flex items-center justify-center gap-3 bg-white p-2 border border-[#D4AF37]/10">
+                    <img 
+                      src={formFeaturedImage} 
+                      alt="Cover Preview" 
+                      referrerPolicy="no-referrer"
+                      className="h-14 w-20 object-cover border border-stone-200"
+                    />
+                    <div className="text-left">
+                      <span className="text-[10px] font-mono text-[#D4AF37] block uppercase font-bold">Image Loaded Successfully</span>
+                      <span className="text-[9px] text-stone-400 block truncate max-w-[200px]" title={formFeaturedImage}>
+                        {formFeaturedImage.startsWith('data:') ? 'Local Base64 Data Asset' : formFeaturedImage}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -489,9 +567,9 @@ export default function StudioDashboard({
             </div>
 
             {/* Broad Rich Markdown Content Input Area */}
-            <div className="col-span-1 md:col-span-2">
+            <div className="col-span-1 md:col-span-2 space-y-2">
               <div className="flex justify-between items-center mb-1">
-                <label className="block text-xs font-mono uppercase tracking-widest text-stone-500">
+                <label className="block text-xs font-mono uppercase tracking-widest text-[#1A1A1A]/85 font-semibold">
                   Luxury Article Body (Markdown Assisted Editor)
                 </label>
                 <div className="flex items-center gap-2">
@@ -505,6 +583,108 @@ export default function StudioDashboard({
                 className="w-full bg-[#FAF9F6] border border-[#D4AF37]/20 rounded-none p-3 text-xs md:text-sm text-stone-950 font-mono leading-relaxed focus:ring-1 focus:ring-[#D4AF37] focus:border-[#D4AF37] focus:outline-none"
                 placeholder="Write with headers using ##, write lists inside matching outfits guides..."
               ></textarea>
+
+              {/* Article body image device uploader box */}
+              <div className="border border-dashed border-[#D4AF37]/25 bg-[#FAF9F6] p-4 rounded-none mt-2">
+                <div className="flex items-center justify-between border-b border-[#D4AF37]/15 pb-1.5 mb-2">
+                  <h5 className="font-serif text-xs font-bold uppercase tracking-wider text-[#1A1A1A]">Article Image Uploader Tool</h5>
+                  <span className="text-[9px] font-mono text-[#D4AF37] uppercase tracking-widest bg-[#D4AF37]/10 px-2 py-0.5 font-bold animate-pulse">Asset Embedder</span>
+                </div>
+                <p className="text-[10px] text-stone-500 leading-normal mb-3 font-sans">
+                  Upload high-res images from your computer or mobile gallery directly to use inside the article body content!
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Drag and Drop Zone */}
+                  <div 
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const files = e.dataTransfer.files;
+                      if (files && files.length > 0) {
+                        const file = files[0];
+                        if (['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            if (typeof reader.result === 'string') {
+                              setUploadedArticleImage(reader.result);
+                              setUploadImageName(file.name);
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }
+                    }}
+                    className="cursor-pointer border border-[#D4AF37]/15 hover:border-[#D4AF37] p-3 bg-white text-center transition flex flex-col items-center justify-center gap-1 min-h-[90px]"
+                    onClick={() => document.getElementById('body-image-uploader')?.click()}
+                  >
+                    <Upload className="h-4 w-4 text-[#D4AF37]" />
+                    <span className="text-[9px] text-stone-500 uppercase tracking-widest font-mono font-semibold">Drop Article Image here or Browse</span>
+                    <span className="text-[8px] text-stone-400">Accepts JPG, JPEG, PNG, WEBP</span>
+                    <input 
+                      id="body-image-uploader"
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={(e) => {
+                        const files = e.target.files;
+                        if (files && files.length > 0) {
+                          const file = files[0];
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            if (typeof reader.result === 'string') {
+                              setUploadedArticleImage(reader.result);
+                              setUploadImageName(file.name);
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Preview and Insertion Controls */}
+                  <div className="bg-white p-3 border border-[#D4AF37]/10 flex flex-col justify-between">
+                    {uploadedArticleImage ? (
+                      <div className="space-y-2">
+                        <div className="flex gap-2.5 items-center">
+                          <img 
+                            src={uploadedArticleImage} 
+                            alt="Uploaded Preview" 
+                            className="h-12 w-12 object-cover border border-stone-200"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <span className="text-[10px] font-mono text-stone-500 truncate block">{uploadImageName || 'Device Image'}</span>
+                            <span className="text-[8px] text-emerald-600 block uppercase font-bold tracking-wider">Ready to Embed</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // Append markdown image tag to existing content
+                            const imageMarkdown = `\n\n![${uploadImageName ? uploadImageName.split('.')[0] : 'In-Article Fashion Media'}](${uploadedArticleImage})\n\n`;
+                            setFormContent(prev => prev + imageMarkdown);
+                            setUploadedArticleImage("");
+                            setUploadImageName("");
+                          }}
+                          className="w-full bg-[#D4AF37] hover:bg-[#B8962E] text-white text-[9px] uppercase font-bold tracking-widest py-1.5 transition cursor-pointer text-center rounded-none"
+                        >
+                          + Insert into Article Body
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-center h-full flex flex-col items-center justify-center py-4 text-stone-400">
+                        <span className="text-[10px] italic font-serif">No file uploaded yet</span>
+                        <span className="text-[8px] text-stone-400 mt-1">Uploader transforms media instantly into a safe web-embed code look.</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Custom Google Ads / Affiliate Box Builder inside dashboard */}

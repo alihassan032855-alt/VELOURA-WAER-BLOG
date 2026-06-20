@@ -4,13 +4,19 @@ import MagazineHome from './components/MagazineHome';
 import ArticleDetail from './components/ArticleDetail';
 import StudioDashboard from './components/StudioDashboard';
 import AdminDashboard from './components/AdminDashboard';
+import ContactPage from './components/ContactPage';
 import SEOHeader from './components/SEOHeader';
 import { Sparkles, BookOpen, PenTool, LayoutDashboard, Bookmark, X, Search, Heart, Clock, Menu } from 'lucide-react';
 
 export default function App() {
   // Navigation states
-  const [currentTab, setCurrentTab] = useState<'home' | 'reader' | 'studio' | 'admin'>('home');
+  const [currentTab, setCurrentTab] = useState<'home' | 'reader' | 'studio' | 'admin' | 'contact'>('home');
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
+  
+  // Administrative gates protection
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return sessionStorage.getItem("veloura_authenticated") === "true";
+  });
   
   // Articles data state
   const [articles, setArticles] = useState<Article[]>([]);
@@ -44,6 +50,24 @@ export default function App() {
     if (localSaved) {
       setSavedBookmarks(JSON.parse(localSaved));
     }
+
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash === '#studio-admin' || hash === '#studio' || hash === '#admin') {
+        setCurrentTab(hash === '#admin' ? 'admin' : 'studio');
+        setActiveArticle(null);
+      } else if (hash === '#contact') {
+        setCurrentTab('contact');
+        setActiveArticle(null);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    handleHashChange();
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
   }, []);
 
   const handleToggleBookmark = (id: string) => {
@@ -104,37 +128,41 @@ export default function App() {
             <span className="hidden sm:inline">Magazine</span>
           </button>
 
-          <button
-            onClick={() => {
-              setCurrentTab('studio');
-              setActiveArticle(null);
-              trackActivityEvent("tab_switch", "studio");
-            }}
-            className={`flex items-center gap-1.5 transition pb-1 border-b cursor-pointer ${
-              currentTab === 'studio'
-                ? 'text-[#D4AF37] border-[#D4AF37] font-bold'
-                : 'text-[#1A1A1A]/60 border-transparent hover:text-[#1A1A1A]'
-            }`}
-          >
-            <PenTool className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Writer's Studio</span>
-          </button>
+          {isAuthenticated && (
+            <>
+              <button
+                onClick={() => {
+                  setCurrentTab('studio');
+                  setActiveArticle(null);
+                  trackActivityEvent("tab_switch", "studio");
+                }}
+                className={`flex items-center gap-1.5 transition pb-1 border-b cursor-pointer ${
+                  currentTab === 'studio'
+                    ? 'text-[#D4AF37] border-[#D4AF37] font-bold'
+                    : 'text-[#1A1A1A]/60 border-transparent hover:text-[#1A1A1A]'
+                }`}
+              >
+                <PenTool className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Writer's Studio</span>
+              </button>
 
-          <button
-            onClick={() => {
-              setCurrentTab('admin');
-              setActiveArticle(null);
-              trackActivityEvent("tab_switch", "admin");
-            }}
-            className={`flex items-center gap-1.5 transition pb-1 border-b cursor-pointer ${
-              currentTab === 'admin'
-                ? 'text-[#D4AF37] border-[#D4AF37] font-bold'
-                : 'text-[#1A1A1A]/60 border-transparent hover:text-[#1A1A1A]'
-            }`}
-          >
-            <LayoutDashboard className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">HQ Dashboard</span>
-          </button>
+              <button
+                onClick={() => {
+                  setCurrentTab('admin');
+                  setActiveArticle(null);
+                  trackActivityEvent("tab_switch", "admin");
+                }}
+                className={`flex items-center gap-1.5 transition pb-1 border-b cursor-pointer ${
+                  currentTab === 'admin'
+                    ? 'text-[#D4AF37] border-[#D4AF37] font-bold'
+                    : 'text-[#1A1A1A]/60 border-transparent hover:text-[#1A1A1A]'
+                }`}
+              >
+                <LayoutDashboard className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">HQ Dashboard</span>
+              </button>
+            </>
+          )}
         </nav>
 
         {/* Center: Absolute center header logo on large layouts */}
@@ -173,6 +201,10 @@ export default function App() {
                 onToggleBookmark={handleToggleBookmark}
                 onSubscribe={() => trackActivityEvent("subscribe_newsletter")}
                 onTrackEvent={trackActivityEvent}
+                onNavigateToContact={() => {
+                  setCurrentTab('contact');
+                  window.scrollTo({ top: 0, behavior: 'instant' });
+                }}
               />
             )}
 
@@ -194,20 +226,81 @@ export default function App() {
 
             {/* Writer's blog CMS controls */}
             {currentTab === 'studio' && (
-              <StudioDashboard
-                articles={articles}
-                onRefreshArticles={loadArticles}
-                onTrackEvent={trackActivityEvent}
-              />
+              !isAuthenticated ? (
+                <div className="w-full bg-[#FAF9F6] py-20 px-4 flex justify-center items-center font-sans">
+                  <div className="bg-white border border-[#D4AF37]/25 p-8 max-w-md w-full rounded-none">
+                    <div className="text-center mb-6">
+                      <Sparkles className="h-6 w-6 text-[#D4AF37] mx-auto mb-2" />
+                      <h3 className="font-serif text-lg uppercase tracking-widest text-[#1A1A1A]">Maison Studio Gate</h3>
+                      <p className="text-[10px] text-stone-400 mt-1 uppercase tracking-wider font-mono">Restricted Editorial Access</p>
+                    </div>
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      const val = (e.currentTarget.elements.namedItem('passwd') as HTMLInputElement).value;
+                      if (val === 'hafizabad') {
+                        setIsAuthenticated(true);
+                        sessionStorage.setItem("veloura_authenticated", "true");
+                      } else {
+                        alert('Access Denied: Incorrect password.');
+                      }
+                    }} className="space-y-4">
+                      <div>
+                        <label className="block text-[10px] uppercase font-mono tracking-widest text-[#1A1A1A]/70 mb-1.5">Enter Security Passkey</label>
+                        <input name="passwd" type="password" required className="w-full bg-[#FAF9F6] border border-[#D4AF37]/20 rounded-none px-4 py-2 text-xs focus:outline-none focus:border-[#D4AF37]" placeholder="•••••••••" />
+                      </div>
+                      <button type="submit" className="w-full bg-[#D4AF37] text-white font-bold text-xs uppercase py-2 tracking-widest cursor-pointer hover:bg-[#B8962E] transition rounded-none">Verify credentials</button>
+                    </form>
+                  </div>
+                </div>
+              ) : (
+                <StudioDashboard
+                  articles={articles}
+                  onRefreshArticles={loadArticles}
+                  onTrackEvent={trackActivityEvent}
+                />
+              )
             )}
 
             {/* Executive HQ metrics panel */}
             {currentTab === 'admin' && (
-              <AdminDashboard
-                articles={articles}
-                onRefreshArticles={loadArticles}
-                onTrackEvent={trackActivityEvent}
-              />
+              !isAuthenticated ? (
+                <div className="w-full bg-[#FAF9F6] py-20 px-4 flex justify-center items-center font-sans">
+                  <div className="bg-white border border-[#D4AF37]/25 p-8 max-w-md w-full rounded-none">
+                    <div className="text-center mb-6">
+                      <LayoutDashboard className="h-6 w-6 text-[#D4AF37] mx-auto mb-2" />
+                      <h3 className="font-serif text-lg uppercase tracking-widest text-[#1A1A1A]">Maison HQ Gate</h3>
+                      <p className="text-[10px] text-stone-400 mt-1 uppercase tracking-wider font-mono">Restricted HQ Analytics Access</p>
+                    </div>
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      const val = (e.currentTarget.elements.namedItem('passwd') as HTMLInputElement).value;
+                      if (val === 'hafizabad') {
+                        setIsAuthenticated(true);
+                        sessionStorage.setItem("veloura_authenticated", "true");
+                      } else {
+                        alert('Access Denied: Incorrect password.');
+                      }
+                    }} className="space-y-4">
+                      <div>
+                        <label className="block text-[10px] uppercase font-mono tracking-widest text-[#1A1A1A]/70 mb-1.5">Enter Security Passkey</label>
+                        <input name="passwd" type="password" required className="w-full bg-[#FAF9F6] border border-[#D4AF37]/20 rounded-none px-4 py-2 text-xs focus:outline-none focus:border-[#D4AF37]" placeholder="•••••••••" />
+                      </div>
+                      <button type="submit" className="w-full bg-[#D4AF37] text-white font-bold text-xs uppercase py-2 tracking-widest cursor-pointer hover:bg-[#B8962E] transition rounded-none">Verify credentials</button>
+                    </form>
+                  </div>
+                </div>
+              ) : (
+                <AdminDashboard
+                  articles={articles}
+                  onRefreshArticles={loadArticles}
+                  onTrackEvent={trackActivityEvent}
+                />
+              )
+            )}
+
+            {/* Contact page */}
+            {currentTab === 'contact' && (
+              <ContactPage />
             )}
           </>
         )}

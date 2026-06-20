@@ -9,6 +9,7 @@ interface MagazineHomeProps {
   onToggleBookmark: (id: string) => void;
   onSubscribe: () => void;
   onTrackEvent: (eventType: string, value?: string) => void;
+  onNavigateToContact: () => void;
 }
 
 export default function MagazineHome({
@@ -17,7 +18,8 @@ export default function MagazineHome({
   savedBookmarks,
   onToggleBookmark,
   onSubscribe,
-  onTrackEvent
+  onTrackEvent,
+  onNavigateToContact
 }: MagazineHomeProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -451,6 +453,7 @@ export default function MagazineHome({
               <div className="flex flex-col gap-2.5 text-xs text-stone-400">
                 <a href="#about" className="hover:text-white transition">About Our Heritage</a>
                 <a href="#press" className="hover:text-white transition">Vogue Editorial Room</a>
+                <button onClick={() => onNavigateToContact()} className="hover:text-white transition text-left cursor-pointer">Contact Us</button>
                 <a href="#affiliate" className="hover:text-white transition">Affiliate Disclosure</a>
                 <a href="#privacy" className="hover:text-white transition">Privacy Policy (GDPR)</a>
               </div>
