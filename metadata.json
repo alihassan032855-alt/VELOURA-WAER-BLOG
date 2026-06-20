@@ -1,0 +1,6 @@
+{
+  "name": "Veloura Wear",
+  "description": "A premium luxury fashion magazine and blogging platform focusing on styling advice, beauty, wardrobe essentials, and seasonal trends.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
