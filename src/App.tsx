@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Article } from './types';
 import MagazineHome from './components/MagazineHome';
 import ArticleDetail from './components/ArticleDetail';
@@ -15,8 +15,30 @@ export default function App() {
   
   // Administrative gates protection
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem("veloura_authenticated") === "true";
+    return !!sessionStorage.getItem("veloura_token");
   });
+
+  const handleLoginAttempt = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const val = (e.currentTarget.elements.namedItem('passwd') as HTMLInputElement).value;
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: val })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        sessionStorage.setItem("veloura_token", data.token);
+        setIsAuthenticated(true);
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Access Denied: Incorrect password.');
+      }
+    } catch (err) {
+      alert('Network error. Could not authenticate.');
+    }
+  };
   
   // Articles data state
   const [articles, setArticles] = useState<Article[]>([]);
@@ -51,24 +73,49 @@ export default function App() {
       setSavedBookmarks(JSON.parse(localSaved));
     }
 
-    const handleHashChange = () => {
-      const hash = window.location.hash;
-      if (hash === '#studio-admin' || hash === '#studio' || hash === '#admin') {
-        setCurrentTab(hash === '#admin' ? 'admin' : 'studio');
-        setActiveArticle(null);
-      } else if (hash === '#contact') {
-        setCurrentTab('contact');
-        setActiveArticle(null);
+    const handleLocationChange = () => {
+      const pathElems = window.location.pathname.split('/');
+      if (pathElems[1] === 'article' && pathElems[2]) {
+        // Handled by the other articles-dependent useEffect
+      } else {
+        const hash = window.location.hash;
+        if (hash === '#studio-admin' || hash === '#studio' || hash === '#admin') {
+          setCurrentTab(hash === '#admin' ? 'admin' : 'studio');
+          setActiveArticle(null);
+        } else if (hash === '#contact') {
+          setCurrentTab('contact');
+          setActiveArticle(null);
+        } else if (window.location.pathname === '/') {
+          setCurrentTab('home');
+          setActiveArticle(null);
+        }
       }
     };
 
-    window.addEventListener('hashchange', handleHashChange);
-    handleHashChange();
+    window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener('hashchange', handleLocationChange);
+    handleLocationChange();
 
     return () => {
-      window.removeEventListener('hashchange', handleHashChange);
+      window.removeEventListener('popstate', handleLocationChange);
+      window.removeEventListener('hashchange', handleLocationChange);
     };
   }, []);
+
+  useEffect(() => {
+    const pathElems = window.location.pathname.split('/');
+    if (pathElems[1] === 'article' && pathElems[2]) {
+      const slug = pathElems[2];
+      const found = articles.find(a => a.slug === slug);
+      if (found) {
+        setActiveArticle(found);
+        setCurrentTab('reader');
+      }
+    } else if (window.location.pathname === '/' && currentTab === 'reader') {
+      setCurrentTab('home');
+      setActiveArticle(null);
+    }
+  }, [articles, window.location.pathname]);
 
   const handleToggleBookmark = (id: string) => {
     let updated;
@@ -97,6 +144,7 @@ export default function App() {
   const selectArticleToRead = (art: Article) => {
     setActiveArticle(art);
     setCurrentTab('reader');
+    window.history.pushState(null, '', `/article/${art.slug}`);
   };
 
   // Pre-filter bookmark items that are fully published
@@ -116,6 +164,7 @@ export default function App() {
             onClick={() => {
               setCurrentTab('home');
               setActiveArticle(null);
+              window.history.pushState(null, '', '/');
               trackActivityEvent("tab_switch", "home");
             }}
             className={`flex items-center gap-1.5 transition pb-1 border-b cursor-pointer ${
@@ -166,7 +215,7 @@ export default function App() {
         </nav>
 
         {/* Center: Absolute center header logo on large layouts */}
-        <div className="text-xl sm:text-2xl md:text-3xl tracking-[0.25em] font-serif font-bold uppercase cursor-pointer select-none" onClick={() => { setCurrentTab('home'); setActiveArticle(null); }}>
+        <div className="text-xl sm:text-2xl md:text-3xl tracking-[0.25em] font-serif font-bold uppercase cursor-pointer select-none" onClick={() => { setCurrentTab('home'); setActiveArticle(null); window.history.pushState(null, '', '/'); }}>
           Veloura <span className="text-[#D4AF37]">Wear</span>
         </div>
 
@@ -234,16 +283,7 @@ export default function App() {
                       <h3 className="font-serif text-lg uppercase tracking-widest text-[#1A1A1A]">Maison Studio Gate</h3>
                       <p className="text-[10px] text-stone-400 mt-1 uppercase tracking-wider font-mono">Restricted Editorial Access</p>
                     </div>
-                    <form onSubmit={(e) => {
-                      e.preventDefault();
-                      const val = (e.currentTarget.elements.namedItem('passwd') as HTMLInputElement).value;
-                      if (val === 'hafizabad') {
-                        setIsAuthenticated(true);
-                        sessionStorage.setItem("veloura_authenticated", "true");
-                      } else {
-                        alert('Access Denied: Incorrect password.');
-                      }
-                    }} className="space-y-4">
+                    <form onSubmit={handleLoginAttempt} className="space-y-4">
                       <div>
                         <label className="block text-[10px] uppercase font-mono tracking-widest text-[#1A1A1A]/70 mb-1.5">Enter Security Passkey</label>
                         <input name="passwd" type="password" required className="w-full bg-[#FAF9F6] border border-[#D4AF37]/20 rounded-none px-4 py-2 text-xs focus:outline-none focus:border-[#D4AF37]" placeholder="•••••••••" />
@@ -271,16 +311,7 @@ export default function App() {
                       <h3 className="font-serif text-lg uppercase tracking-widest text-[#1A1A1A]">Maison HQ Gate</h3>
                       <p className="text-[10px] text-stone-400 mt-1 uppercase tracking-wider font-mono">Restricted HQ Analytics Access</p>
                     </div>
-                    <form onSubmit={(e) => {
-                      e.preventDefault();
-                      const val = (e.currentTarget.elements.namedItem('passwd') as HTMLInputElement).value;
-                      if (val === 'hafizabad') {
-                        setIsAuthenticated(true);
-                        sessionStorage.setItem("veloura_authenticated", "true");
-                      } else {
-                        alert('Access Denied: Incorrect password.');
-                      }
-                    }} className="space-y-4">
+                    <form onSubmit={handleLoginAttempt} className="space-y-4">
                       <div>
                         <label className="block text-[10px] uppercase font-mono tracking-widest text-[#1A1A1A]/70 mb-1.5">Enter Security Passkey</label>
                         <input name="passwd" type="password" required className="w-full bg-[#FAF9F6] border border-[#D4AF37]/20 rounded-none px-4 py-2 text-xs focus:outline-none focus:border-[#D4AF37]" placeholder="•••••••••" />

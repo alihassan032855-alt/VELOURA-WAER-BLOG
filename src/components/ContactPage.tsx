@@ -6,14 +6,34 @@ export default function ContactPage() {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorText, setErrorText] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (name.trim() && email.trim() && message.trim()) {
-      setIsSubmitted(true);
-      setName('');
-      setEmail('');
-      setMessage('');
+    if (!name.trim() || !email.trim() || !message.trim()) return;
+
+    setIsSubmitting(true);
+    setErrorText('');
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, message })
+      });
+      if (res.ok) {
+        setIsSubmitted(true);
+        setName('');
+        setEmail('');
+        setMessage('');
+      } else {
+        const val = await res.json();
+        setErrorText(val.error || "Submission failed. Please check form inputs.");
+      }
+    } catch (err: any) {
+      setErrorText("Could not reach backend. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -96,12 +116,19 @@ export default function ContactPage() {
               </div>
             </div>
 
+            {errorText && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-mono">
+                {errorText}
+              </div>
+            )}
+
             <button
               type="submit"
-              className="w-full bg-[#D4AF37] hover:bg-[#B8962E] text-white font-bold text-xs uppercase py-3 tracking-widest cursor-pointer transition flex items-center justify-center gap-2 rounded-none"
+              disabled={isSubmitting}
+              className={`w-full bg-[#D4AF37] hover:bg-[#B8962E] text-white font-bold text-xs uppercase py-3 tracking-widest transition flex items-center justify-center gap-2 rounded-none ${isSubmitting ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
             >
-              <Send className="h-3.5 w-3.5" />
-              <span>Send Message</span>
+              <Send className="h-3.5 w-3.5 animate-pulse" />
+              <span>{isSubmitting ? "Sending inquiry..." : "Send Message"}</span>
             </button>
           </form>
         )}

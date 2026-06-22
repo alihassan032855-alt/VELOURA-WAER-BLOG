@@ -44,6 +44,27 @@ export default function StudioDashboard({
 
   const [savingStatus, setSavingStatus] = useState("");
 
+  const uploadImageFile = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("image", file);
+    
+    const token = sessionStorage.getItem("veloura_token");
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      headers: {
+        "Authorization": token ? `Bearer ${token}` : ""
+      },
+      body: formData
+    });
+    
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || "Upload failed");
+    }
+    const data = await res.json();
+    return data.url;
+  };
+
   // Select first article or default to new
   const loadArticleIntoForm = (art: Article) => {
     setSelectedArticleId(art.id);
@@ -97,11 +118,20 @@ export default function StudioDashboard({
     onTrackEvent("blogger_import", bloggerUrl);
 
     try {
+      const token = sessionStorage.getItem("veloura_token");
       const res = await fetch("/api/import", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": token ? `Bearer ${token}` : ""
+        },
         body: JSON.stringify({ url: bloggerUrl })
       });
+      if (res.status === 401) {
+        sessionStorage.removeItem("veloura_token");
+        window.location.reload();
+        return;
+      }
       const data = await res.json();
       if (res.ok && data.success) {
         setImportStatus({ success: true, message: `Blogger Article '${data.article.title}' crawled, enhanced and imported successfully into your drafts queue!` });
@@ -142,21 +172,34 @@ export default function StudioDashboard({
     };
 
     try {
+      const token = sessionStorage.getItem("veloura_token");
       let res;
       if (selectedArticleId && selectedArticleId.startsWith("art") || selectedArticleId?.startsWith("imported") || selectedArticleId?.startsWith("minimalist")) {
         // UPDATE existing
         res = await fetch(`/api/articles/${selectedArticleId}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : ""
+          },
           body: JSON.stringify(articleData)
         });
       } else {
         // CREATE new
         res = await fetch("/api/articles", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : ""
+          },
           body: JSON.stringify(articleData)
         });
+      }
+
+      if (res.status === 401) {
+        sessionStorage.removeItem("veloura_token");
+        window.location.reload();
+        return;
       }
 
       const data = await res.json();
@@ -178,7 +221,18 @@ export default function StudioDashboard({
   const handleDeleteArticle = async (id: string) => {
     if (!confirm("Are you certain you wish to purge this editorial from the servers? This action cannot be undone.")) return;
     try {
-      const res = await fetch(`/api/articles/${id}`, { method: "DELETE" });
+      const token = sessionStorage.getItem("veloura_token");
+      const res = await fetch(`/api/articles/${id}`, { 
+        method: "DELETE",
+        headers: {
+          "Authorization": token ? `Bearer ${token}` : ""
+        }
+      });
+      if (res.status === 401) {
+        sessionStorage.removeItem("veloura_token");
+        window.location.reload();
+        return;
+      }
       if (res.ok) {
         onRefreshArticles();
         createNewEmptyArticle();
@@ -494,13 +548,9 @@ export default function StudioDashboard({
                     if (files && files.length > 0) {
                       const file = files[0];
                       if (['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          if (typeof reader.result === 'string') {
-                            setFormFeaturedImage(reader.result);
-                          }
-                        };
-                        reader.readAsDataURL(file);
+                        uploadImageFile(file)
+                          .then(url => setFormFeaturedImage(url))
+                          .catch(err => alert("Upload error: " + err.message));
                       }
                     }
                   }}
@@ -519,13 +569,9 @@ export default function StudioDashboard({
                       const files = e.target.files;
                       if (files && files.length > 0) {
                         const file = files[0];
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          if (typeof reader.result === 'string') {
-                            setFormFeaturedImage(reader.result);
-                          }
-                        };
-                        reader.readAsDataURL(file);
+                        uploadImageFile(file)
+                          .then(url => setFormFeaturedImage(url))
+                          .catch(err => alert("Upload error: " + err.message));
                       }
                     }}
                   />
@@ -608,14 +654,12 @@ export default function StudioDashboard({
                       if (files && files.length > 0) {
                         const file = files[0];
                         if (['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
-                          const reader = new FileReader();
-                          reader.onload = () => {
-                            if (typeof reader.result === 'string') {
-                              setUploadedArticleImage(reader.result);
+                          uploadImageFile(file)
+                            .then(url => {
+                              setUploadedArticleImage(url);
                               setUploadImageName(file.name);
-                            }
-                          };
-                          reader.readAsDataURL(file);
+                            })
+                            .catch(err => alert("Upload error: " + err.message));
                         }
                       }
                     }}
@@ -634,14 +678,12 @@ export default function StudioDashboard({
                         const files = e.target.files;
                         if (files && files.length > 0) {
                           const file = files[0];
-                          const reader = new FileReader();
-                          reader.onload = () => {
-                            if (typeof reader.result === 'string') {
-                              setUploadedArticleImage(reader.result);
+                          uploadImageFile(file)
+                            .then(url => {
+                              setUploadedArticleImage(url);
                               setUploadImageName(file.name);
-                            }
-                          };
-                          reader.readAsDataURL(file);
+                            })
+                            .catch(err => alert("Upload error: " + err.message));
                         }
                       }}
                     />

@@ -37,10 +37,19 @@ export default function AdminDashboard({
   const loadAnalytics = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/analytics");
+      const token = sessionStorage.getItem("veloura_token");
+      const res = await fetch("/api/analytics", {
+        headers: {
+          "Authorization": token ? `Bearer ${token}` : ""
+        }
+      });
       if (res.ok) {
         const data = await res.json();
         setAnalytics(data);
+      } else if (res.status === 401) {
+        sessionStorage.removeItem("veloura_token");
+        window.location.hash = "";
+        window.location.reload();
       }
     } catch (err) {
       console.error("Error fetching analytics:", err);
